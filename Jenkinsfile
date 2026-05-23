@@ -11,20 +11,20 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t todo-app:v1 .'
+                sh 'sudo docker build -t todo-app:v1 .'
             }
         }
 
         stage('Stop Old Container') {
             steps {
-                sh 'docker rm -f todo-container || true'
+                sh 'sudo docker rm -f todo-container || true'
             }
         }
 
         stage('Run New Container') {
             steps {
                 sh '''
-                docker run -d \
+                sudo docker run -d \
                 --name todo-container \
                 -p 3000:3000 \
                 todo-app:v1
