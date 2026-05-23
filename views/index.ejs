@@ -1,42 +1,289 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Todo App</title>
+    <meta charset="UTF-8">
+    <title>DevOps Todo App</title>
 
     <style>
         body {
-            font-family: Arial;
-            margin: 40px;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #6b73ff, #000dff);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 420px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
         }
 
         input {
-            padding: 10px;
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            outline: none;
         }
 
         button {
-            padding: 10px;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 10px;
+            background: #00c6ff;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #0072ff;
+            transform: scale(1.05);
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
         }
 
         li {
-            margin: 10px 0;
+            background: rgba(255,255,255,0.2);
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: 0.3s;
+        }
+
+        li:hover {
+            transform: translateX(5px);
+            background: rgba(255,255,255,0.3);
+        }
+
+        .task {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            background: #00ffcc;
+            border-radius: 50%;
+        }
+
+        .title {
+            font-size: 15px;
+        }
+
+        .badge {
+            font-size: 10px;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 8px;
+            border-radius: 8px;
         }
     </style>
 </head>
 
 <body>
 
-    <h1>DevOps Todo Application</h1>
+<div class="container">
+
+    <h1>🚀 DevOps Todo App</h1>
 
     <form action="/add" method="POST">
-        <input type="text" name="task" placeholder="Enter Task" required>
+        <input type="text" name="task" placeholder="✨ Enter your task..." required>
         <button type="submit">Add</button>
     </form>
 
     <ul>
         <% todos.forEach(function(todo){ %>
-            <li><%= todo %></li>
+            <li>
+                <div class="task">
+                    <div class="dot"></div>
+                    <span class="title"><%= todo %></span>
+                </div>
+                <span class="badge">pending</span>
+            </li>
         <% }) %>
     </ul>
+
+</div>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DevOps Todo App</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #6b73ff, #000dff);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 420px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            outline: none;
+        }
+
+        button {
+            padding: 12px 15px;
+            border: none;
+            border-radius: 10px;
+            background: #00c6ff;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #0072ff;
+            transform: scale(1.05);
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        li {
+            background: rgba(255,255,255,0.2);
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: 0.3s;
+        }
+
+        li:hover {
+            transform: translateX(5px);
+            background: rgba(255,255,255,0.3);
+        }
+
+        .task {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            background: #00ffcc;
+            border-radius: 50%;
+        }
+
+        .title {
+            font-size: 15px;
+        }
+
+        .badge {
+            font-size: 10px;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 8px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🚀 DevOps Todo App</h1>
+
+    <form action="/add" method="POST">
+        <input type="text" name="task" placeholder="✨ Enter your task..." required>
+        <button type="submit">Add</button>
+    </form>
+
+    <ul>
+        <% todos.forEach(function(todo){ %>
+            <li>
+                <div class="task">
+                    <div class="dot"></div>
+                    <span class="title"><%= todo %></span>
+                </div>
+                <span class="badge">pending</span>
+            </li>
+        <% }) %>
+    </ul>
+
+</div>
 
 </body>
 </html>
