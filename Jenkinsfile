@@ -3,9 +3,10 @@ pipeline {
 
     environment {
         IMAGE_NAME = "todo-app"
-        CONTAINER_NAME = "todo-container"
         IMAGE_TAG = "v1"
+        CONTAINER_NAME = "smoke-test"
         PORT = "3000"
+        TEST_PORT = "3001"
     }
 
     stages {
@@ -20,6 +21,7 @@ pipeline {
 
         stage('Verify Code') {
             steps {
+                echo "Checking latest code"
                 sh 'ls -la'
                 sh 'git log -1'
             }
@@ -34,13 +36,29 @@ pipeline {
 
         stage('Smoke Test Image') {
             steps {
-                echo 'Running container for smoke test'
+                echo 'Running Smoke Test'
 
                 sh """
-                docker run -d --rm --name smoke-test -p 3001:3000 ${IMAGE_NAME}:${IMAGE_TAG}
-                sleep 5
-                curl -f http://localhost:3001 || exit 1
-                docker stop smoke-test || true
+                docker rm -f ${CONTAINER_NAME} || true
+
+                docker run -d --rm \
+                    --name ${CONTAINER_NAME} \
+                    -p ${TEST_PORT}:${PORT} \
+                    -e PORT=${PORT} \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
+
+                echo "Waiting for app to start..."
+
+                for i in \$(seq 1 10)
+                do
+                    echo "Attempt \$i..."
+                    curl -f http://localhost:${TEST_PORT} && exit 0
+                    sleep 2
+                done
+
+                echo "Smoke Test FAILED ❌"
+                docker logs ${CONTAINER_NAME}
+                exit 1
                 """
             }
         }
@@ -48,28 +66,30 @@ pipeline {
         stage('Stop Old Container') {
             steps {
                 echo 'Stopping old container'
-                sh "docker rm -f ${CONTAINER_NAME} || true"
+                sh "docker rm -f todo-container || true"
             }
         }
 
         stage('Run New Container') {
             steps {
                 echo 'Deploying new container'
+
                 sh """
                 docker run -d \
-                --name ${CONTAINER_NAME} \
-                -p ${PORT}:${PORT} \
-                ${IMAGE_NAME}:${IMAGE_TAG}
+                    --name todo-container \
+                    -p ${PORT}:${PORT} \
+                    -e PORT=${PORT} \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
         }
-
     }
 
     post {
         success {
             echo 'Pipeline SUCCESS ✅'
         }
+
         failure {
             echo 'Pipeline FAILED ❌'
         }
