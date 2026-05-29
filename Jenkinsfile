@@ -6,7 +6,7 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         CONTAINER_NAME = "todo-container"
         PORT = "3000"
-        SONAR_URL = "http://localhost:9000"
+        SONAR_HOST = "http://localhost:9000"
     }
 
     stages {
@@ -34,16 +34,16 @@ pipeline {
             steps {
                 echo 'Running SonarQube Analysis...'
 
-                withSonarQubeEnv('sonar') {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+
                     sh """
                     docker run --rm \
                     -v \$PWD:/usr/src \
                     sonarsource/sonar-scanner-cli \
                     -Dsonar.projectKey=todo-app \
-                    -Dsonar.projectName=Todo-App \
                     -Dsonar.sources=/usr/src \
-                    -Dsonar.host.url=${SONAR_URL} \
-                    -Dsonar.login=${SONAR_TOKEN}
+                    -Dsonar.host.url=${SONAR_HOST} \
+                    -Dsonar.login=$SONAR_TOKEN
                     """
                 }
             }
@@ -51,7 +51,7 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo 'Waiting for Quality Gate...'
+                echo 'Waiting for Sonar Quality Gate...'
                 timeout(time: 2, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
@@ -108,15 +108,13 @@ pipeline {
             steps {
                 echo 'Deploying new container'
 
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'TOKEN')]) {
-                    sh """
-                    docker run -d \
-                        --name ${CONTAINER_NAME} \
-                        -p ${PORT}:${PORT} \
-                        -e PORT=${PORT} \
-                        $USER/${IMAGE_NAME}:${IMAGE_TAG}
-                    """
-                }
+                sh """
+                docker run -d \
+                    --name ${CONTAINER_NAME} \
+                    -p ${PORT}:${PORT} \
+                    -e PORT=${PORT} \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
+                """
             }
         }
 
