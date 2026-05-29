@@ -4,7 +4,6 @@ pipeline {
     environment {
         IMAGE_NAME = "todo-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        DOCKERHUB_USER = "YOUR_DOCKERHUB_USERNAME"
         CONTAINER_NAME = "todo-container"
         PORT = "3000"
     }
@@ -52,7 +51,7 @@ pipeline {
 
         stage('Login & Push to DockerHub') {
             steps {
-                echo 'Pushing image to DockerHub...'
+                echo 'Logging in and pushing image to DockerHub...'
 
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'TOKEN')]) {
                     sh """
@@ -77,13 +76,15 @@ pipeline {
             steps {
                 echo 'Deploying new container'
 
-                sh """
-                docker run -d \
-                    --name ${CONTAINER_NAME} \
-                    -p ${PORT}:${PORT} \
-                    -e PORT=${PORT} \
-                    $DOCKERHUB_USER/${IMAGE_NAME}:${IMAGE_TAG}
-                """
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'TOKEN')]) {
+                    sh """
+                    docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        -p ${PORT}:${PORT} \
+                        -e PORT=${PORT} \
+                        $USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
             }
         }
 
