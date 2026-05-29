@@ -6,7 +6,7 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         CONTAINER_NAME = "todo-container"
         PORT = "3000"
-        SONAR_HOST = "http://localhost:9000"
+        SONAR_HOST = "http://172.30.96.1:9000"
     }
 
     stages {
@@ -27,9 +27,6 @@ pipeline {
             }
         }
 
-        /* =========================
-           SONARQUBE ANALYSIS
-        ========================== */
         stage('SonarQube Analysis') {
             steps {
                 echo 'Running SonarQube Analysis...'
@@ -41,6 +38,7 @@ pipeline {
                     -v \$PWD:/usr/src \
                     sonarsource/sonar-scanner-cli \
                     -Dsonar.projectKey=todo-app \
+                    -Dsonar.projectName=Todo-App \
                     -Dsonar.sources=/usr/src \
                     -Dsonar.host.url=${SONAR_HOST} \
                     -Dsonar.login=$SONAR_TOKEN
@@ -51,7 +49,7 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo 'Waiting for Sonar Quality Gate...'
+                echo 'Waiting for Quality Gate...'
                 timeout(time: 2, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
