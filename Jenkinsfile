@@ -33,6 +33,22 @@ pipeline {
             }
         }
 
+        stage('Trivy Security Scan') {
+            steps {
+                echo 'Running Trivy Image Scan...'
+
+                sh """
+                docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v $WORKSPACE:/report \
+                aquasec/trivy image \
+                --format json \
+                --output /report/trivy-report.json \
+                ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
+
         stage('Stop Old Container') {
             steps {
                 echo 'Stopping old container if exists'
@@ -54,7 +70,7 @@ pipeline {
             }
         }
 
-	stage('Smoke Test') {
+        stage('Smoke Test') {
             steps {
                 echo 'Running Smoke Test...'
 
@@ -62,14 +78,14 @@ pipeline {
                 sleep 10
                 docker exec ${CONTAINER_NAME} curl -f http://localhost:${PORT} || exit 1
                 """
-             }
-        } 
-
+            }
+        }
     }
 
     post {
         success {
             echo 'Pipeline SUCCESS ✅'
+            archiveArtifacts artifacts: 'trivy-report.json'
         }
 
         failure {
