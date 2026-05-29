@@ -72,7 +72,7 @@ pipeline {
 
         stage('Smoke Test') {
             steps {
-                echo 'Running Smoke Test...'
+                echo 'Running Smoke Test inside container...'
 
                 sh """
                 sleep 10
