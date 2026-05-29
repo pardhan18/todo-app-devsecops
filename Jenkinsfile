@@ -26,6 +26,39 @@ pipeline {
             }
         }
 
+        /* =========================
+           SONARQUBE ANALYSIS STAGE
+        ========================== */
+        stage('SonarQube Analysis') {
+            steps {
+                echo 'Running SonarQube Analysis...'
+
+                withSonarQubeEnv('sonar') {
+                    sh """
+                    sonar-scanner \
+                    -Dsonar.projectKey=todo-app \
+                    -Dsonar.projectName=Todo-App \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=http://host.docker.internal:9000 \
+                    -Dsonar.login=${SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+
+        /* =========================
+           QUALITY GATE (IMPORTANT)
+        ========================== */
+        stage('Quality Gate') {
+            steps {
+                echo 'Waiting for SonarQube Quality Gate...'
+
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker Image'
