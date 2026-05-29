@@ -6,6 +6,8 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         CONTAINER_NAME = "todo-container"
         PORT = "3000"
+
+        SONAR_PROJECT = "todo-app"
         SONAR_HOST = "http://172.30.96.1:9000"
     }
 
@@ -21,9 +23,31 @@ pipeline {
 
         stage('Verify Code') {
             steps {
-                echo "Checking latest code"
                 sh 'ls -la'
                 sh 'git log -1'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker Image'
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Trivy Scan') {
+            steps {
+                echo 'Running Trivy Scan...'
+
+                sh """
+                docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v \$PWD:/workspace \
+                aquasec/trivy image \
+                --format json \
+                --output /workspace/trivy-report.json \
+                ${IMAGE_NAME}:${IMAGE_TAG} || true
+                """
             }
         }
 
@@ -32,16 +56,15 @@ pipeline {
                 echo 'Running SonarQube Analysis...'
 
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-
                     sh """
                     docker run --rm \
                     -v \$PWD:/usr/src \
                     sonarsource/sonar-scanner-cli \
-                    -Dsonar.projectKey=todo-app \
-                    -Dsonar.projectName=Todo-App \
+                    -Dsonar.projectKey=${SONAR_PROJECT} \
+                    -Dsonar.projectName=${SONAR_PROJECT} \
                     -Dsonar.sources=/usr/src \
                     -Dsonar.host.url=${SONAR_HOST} \
-                    -Dsonar.login=$SONAR_TOKEN
+                    -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
             }
@@ -56,40 +79,21 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                echo 'Building Docker Image'
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-            }
-        }
-
-        stage('Trivy Security Scan') {
-            steps {
-                echo 'Running Trivy Scan...'
-
-                sh """
-                docker run --rm \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                -v \$PWD:/workspace \
-                aquasec/trivy image \
-                --format json \
-                --output /workspace/trivy-report.json \
-                ${IMAGE_NAME}:${IMAGE_TAG}
-                """
-            }
-        }
-
         stage('Login & Push to DockerHub') {
             steps {
-                echo 'Logging in and pushing image...'
+                echo 'DockerHub Login & Push'
 
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'TOKEN')]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'TOKEN'
+                )]) {
                     sh """
-                    echo $TOKEN | docker login -u $USER --password-stdin
+                    echo \$TOKEN | docker login -u \$USER --password-stdin
 
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} $USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} \$USER/${IMAGE_NAME}:${IMAGE_TAG}
 
-                    docker push $USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push \$USER/${IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
             }
@@ -97,21 +101,18 @@ pipeline {
 
         stage('Stop Old Container') {
             steps {
-                echo 'Stopping old container if exists'
                 sh "docker rm -f ${CONTAINER_NAME} || true"
             }
         }
 
         stage('Run New Container') {
             steps {
-                echo 'Deploying new container'
-
                 sh """
                 docker run -d \
-                    --name ${CONTAINER_NAME} \
-                    -p ${PORT}:${PORT} \
-                    -e PORT=${PORT} \
-                    ${IMAGE_NAME}:${IMAGE_TAG}
+                --name ${CONTAINER_NAME} \
+                -p ${PORT}:${PORT} \
+                -e PORT=${PORT} \
+                \$USER/${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
         }
@@ -122,7 +123,7 @@ pipeline {
 
                 sh """
                 sleep 10
-                docker exec ${CONTAINER_NAME} curl -f http://localhost:${PORT} || exit 1
+                docker exec ${CONTAINER_NAME} curl -f http://localhost:${PORT}
                 """
             }
         }
