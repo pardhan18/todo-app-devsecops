@@ -54,16 +54,17 @@ pipeline {
             }
         }
 
-        stage('Smoke Test') {
+	stage('Smoke Test') {
             steps {
                 echo 'Running Smoke Test...'
 
                 sh """
                 sleep 10
-                curl -f http://localhost:${PORT} || exit 1
+                docker exec ${CONTAINER_NAME} curl -f http://localhost:${PORT} || exit 1
                 """
-            }
-        }
+             }
+        } 
+
     }
 
     post {
