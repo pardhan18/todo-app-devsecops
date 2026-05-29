@@ -6,6 +6,7 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         CONTAINER_NAME = "todo-container"
         PORT = "3000"
+        SONAR_URL = "http://localhost:9000"
     }
 
     stages {
@@ -27,7 +28,7 @@ pipeline {
         }
 
         /* =========================
-           SONARQUBE ANALYSIS STAGE
+           SONARQUBE ANALYSIS
         ========================== */
         stage('SonarQube Analysis') {
             steps {
@@ -35,24 +36,22 @@ pipeline {
 
                 withSonarQubeEnv('sonar') {
                     sh """
-                    sonar-scanner \
+                    docker run --rm \
+                    -v \$PWD:/usr/src \
+                    sonarsource/sonar-scanner-cli \
                     -Dsonar.projectKey=todo-app \
                     -Dsonar.projectName=Todo-App \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://host.docker.internal:9000 \
+                    -Dsonar.sources=/usr/src \
+                    -Dsonar.host.url=${SONAR_URL} \
                     -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
             }
         }
 
-        /* =========================
-           QUALITY GATE (IMPORTANT)
-        ========================== */
         stage('Quality Gate') {
             steps {
-                echo 'Waiting for SonarQube Quality Gate...'
-
+                echo 'Waiting for Quality Gate...'
                 timeout(time: 2, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
@@ -84,7 +83,7 @@ pipeline {
 
         stage('Login & Push to DockerHub') {
             steps {
-                echo 'Logging in and pushing image to DockerHub...'
+                echo 'Logging in and pushing image...'
 
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'TOKEN')]) {
                     sh """
@@ -123,7 +122,7 @@ pipeline {
 
         stage('Smoke Test') {
             steps {
-                echo 'Running Smoke Test inside container...'
+                echo 'Running Smoke Test...'
 
                 sh """
                 sleep 10
