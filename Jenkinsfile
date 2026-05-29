@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         IMAGE_NAME = "todo-app"
-        IMAGE_TAG = "v1"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        DOCKERHUB_USER = "YOUR_DOCKERHUB_USERNAME"
         CONTAINER_NAME = "todo-container"
         PORT = "3000"
     }
@@ -49,6 +50,22 @@ pipeline {
             }
         }
 
+        stage('Login & Push to DockerHub') {
+            steps {
+                echo 'Pushing image to DockerHub...'
+
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'TOKEN')]) {
+                    sh """
+                    echo $TOKEN | docker login -u $USER --password-stdin
+
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} $USER/${IMAGE_NAME}:${IMAGE_TAG}
+
+                    docker push $USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
+            }
+        }
+
         stage('Stop Old Container') {
             steps {
                 echo 'Stopping old container if exists'
@@ -65,7 +82,7 @@ pipeline {
                     --name ${CONTAINER_NAME} \
                     -p ${PORT}:${PORT} \
                     -e PORT=${PORT} \
-                    ${IMAGE_NAME}:${IMAGE_TAG}
+                    $DOCKERHUB_USER/${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
         }
@@ -89,8 +106,6 @@ pipeline {
             script {
                 if (fileExists('trivy-report.json')) {
                     archiveArtifacts artifacts: 'trivy-report.json'
-                } else {
-                    echo 'Trivy report not found, skipping archive'
                 }
             }
         }
