@@ -24,6 +24,35 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonar-scanner'
+
+                    withSonarQubeEnv('sonar') {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                          -Dsonar.projectKey=todo-app \
+                          -Dsonar.projectName=Todo-App \
+                          -Dsonar.sources=. \
+                          -Dsonar.sourceEncoding=UTF-8 \
+                          -Dsonar.scm.provider=git
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo "Waiting for Sonar Quality Gate..."
+
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 sh """
@@ -32,7 +61,7 @@ pipeline {
             }
         }
 
-        stage('Trivy Scan') {
+        stage('Trivy Security Scan') {
             steps {
                 sh """
                 docker run --rm \
@@ -108,8 +137,9 @@ pipeline {
     }
 
     post {
+
         success {
-            echo 'Pipeline SUCCESS ✅'
+            echo "Pipeline SUCCESS ✅"
 
             script {
                 if (fileExists('trivy-report.json')) {
@@ -119,7 +149,11 @@ pipeline {
         }
 
         failure {
-            echo 'Pipeline FAILED ❌'
+            echo "Pipeline FAILED ❌"
+        }
+
+        always {
+            cleanWs()
         }
     }
 }
