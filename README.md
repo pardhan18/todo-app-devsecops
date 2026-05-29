@@ -1,3 +1,4 @@
+```
 Developer
    ↓
 GitHub (Source Code)
@@ -43,5 +44,7 @@ POST DEPLOYMENT
    ↓
 ────────────────────────
 Rollback System (if failure)
+```
+
 ────────────────────────
 ❌ Rollback system                     (Y NOT DONE)
