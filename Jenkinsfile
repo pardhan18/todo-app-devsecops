@@ -35,15 +35,15 @@ pipeline {
 
         stage('Trivy Security Scan') {
             steps {
-                echo 'Running Trivy Image Scan...'
+                echo 'Running Trivy Scan...'
 
                 sh """
                 docker run --rm \
                 -v /var/run/docker.sock:/var/run/docker.sock \
-                -v $WORKSPACE:/report \
+                -v \$PWD:/workspace \
                 aquasec/trivy image \
                 --format json \
-                --output /report/trivy-report.json \
+                --output /workspace/trivy-report.json \
                 ${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
@@ -76,7 +76,7 @@ pipeline {
 
                 sh """
                 sleep 10
-                docker exec ${CONTAINER_NAME} curl -f http://localhost:${PORT} || exit 1
+                curl -f http://localhost:${PORT} || exit 1
                 """
             }
         }
@@ -85,7 +85,14 @@ pipeline {
     post {
         success {
             echo 'Pipeline SUCCESS ✅'
-            archiveArtifacts artifacts: 'trivy-report.json'
+
+            script {
+                if (fileExists('trivy-report.json')) {
+                    archiveArtifacts artifacts: 'trivy-report.json'
+                } else {
+                    echo 'Trivy report not found, skipping archive'
+                }
+            }
         }
 
         failure {
