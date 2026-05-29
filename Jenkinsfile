@@ -13,7 +13,6 @@ pipeline {
         stage('Clone Code') {
             steps {
                 echo 'Cloning Repository'
-
                 git branch: 'main',
                     url: 'https://github.com/pardhan18/todo-app-devsecops.git'
             }
@@ -22,7 +21,6 @@ pipeline {
         stage('Verify Code') {
             steps {
                 echo 'Checking latest code'
-
                 sh 'ls -la'
                 sh 'git log -1'
             }
@@ -33,6 +31,8 @@ pipeline {
                 script {
                     def scannerHome = tool 'sonar-scanner'
 
+                    echo "Scanner Path: ${scannerHome}"
+
                     sh """
                     ${scannerHome}/bin/sonar-scanner -v
                     """
@@ -42,30 +42,20 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-
-                echo 'Running SonarQube Analysis...'
-
                 script {
-
                     def scannerHome = tool 'sonar-scanner'
 
                     withSonarQubeEnv('sonar') {
 
-                        withCredentials([
-                            string(
-                                credentialsId: 'sonar-token',
-                                variable: 'SONAR_TOKEN'
-                            )
-                        ]) {
-
-                            sh '''
-                            '"${scannerHome}"'/bin/sonar-scanner \
-                              -Dsonar.projectKey=todo-app \
-                              -Dsonar.projectName=Todo-App \
-                              -Dsonar.sources=. \
-                              -Dsonar.token=$SONAR_TOKEN
-                            '''
-                        }
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                          -Dsonar.projectKey=todo-app \
+                          -Dsonar.projectName=Todo-App \
+                          -Dsonar.sources=. \
+                          -Dsonar.sourceEncoding=UTF-8 \
+                          -Dsonar.scm.provider=git \
+                          -Dsonar.exclusions=trivy-report.json,node_modules/**,.git/**
+                        """
                     }
                 }
             }
@@ -73,7 +63,6 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-
                 echo 'Waiting for Quality Gate...'
 
                 timeout(time: 5, unit: 'MINUTES') {
@@ -84,20 +73,18 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-
-                echo 'Building Docker Image...'
+                echo 'Building Docker Image'
 
                 sh """
                 docker build \
-                -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                  -t ${IMAGE_NAME}:${IMAGE_TAG} .
                 """
             }
         }
 
         stage('Trivy Security Scan') {
             steps {
-
-                echo 'Running Trivy Scan...'
+                echo 'Running Trivy Scan'
 
                 sh """
                 docker run --rm \
@@ -114,8 +101,6 @@ pipeline {
         stage('Login & Push to DockerHub') {
             steps {
 
-                echo 'Pushing image to DockerHub...'
-
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub-creds',
@@ -127,11 +112,9 @@ pipeline {
                     sh '''
                     echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
 
-                    docker tag '"${IMAGE_NAME}:${IMAGE_TAG}"' \
-                    "$DOCKER_USER/'"${IMAGE_NAME}"':'"${IMAGE_TAG}"'"
+                    docker tag '"${IMAGE_NAME}:${IMAGE_TAG}"' "$DOCKER_USER/'"${IMAGE_NAME}:${IMAGE_TAG}"'"
 
-                    docker push \
-                    "$DOCKER_USER/'"${IMAGE_NAME}"':'"${IMAGE_TAG}"'"
+                    docker push "$DOCKER_USER/'"${IMAGE_NAME}:${IMAGE_TAG}"'"
                     '''
                 }
             }
@@ -139,8 +122,7 @@ pipeline {
 
         stage('Stop Old Container') {
             steps {
-
-                echo 'Removing old container if exists...'
+                echo 'Removing old container if exists'
 
                 sh """
                 docker rm -f ${CONTAINER_NAME} || true
@@ -150,8 +132,6 @@ pipeline {
 
         stage('Run New Container') {
             steps {
-
-                echo 'Deploying container...'
 
                 withCredentials([
                     usernamePassword(
@@ -175,10 +155,10 @@ pipeline {
         stage('Smoke Test') {
             steps {
 
-                echo 'Running Smoke Test...'
+                echo 'Running Smoke Test'
 
                 sh """
-                sleep 10
+                sleep 15
 
                 docker exec ${CONTAINER_NAME} \
                 curl -f http://localhost:${PORT}
@@ -190,23 +170,23 @@ pipeline {
     post {
 
         success {
-
             echo 'Pipeline SUCCESS ✅'
 
             script {
                 if (fileExists('trivy-report.json')) {
-                    archiveArtifacts artifacts: 'trivy-report.json'
+                    archiveArtifacts(
+                        artifacts: 'trivy-report.json',
+                        allowEmptyArchive: true
+                    )
                 }
             }
         }
 
         failure {
-
             echo 'Pipeline FAILED ❌'
         }
 
         always {
-
             cleanWs()
         }
     }
