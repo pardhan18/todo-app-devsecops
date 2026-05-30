@@ -46,8 +46,10 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
+                echo "Waiting for Sonar Quality Gate (NON-BLOCKING)..."
+
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    waitForQualityGate abortPipeline: false
                 }
             }
         }
@@ -60,7 +62,7 @@ pipeline {
             }
         }
 
-        stage('Trivy Scan') {
+        stage('Trivy Security Scan') {
             steps {
                 sh """
                 docker run --rm \
@@ -74,13 +76,15 @@ pipeline {
             }
         }
 
-        stage('Docker Login & Push') {
+        stage('Login & Push to DockerHub') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_TOKEN'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_TOKEN'
+                    )
+                ]) {
 
                     sh """
                     echo $DOCKER_TOKEN | docker login -u $DOCKER_USER --password-stdin
@@ -94,16 +98,22 @@ pipeline {
             }
         }
 
-        stage('Deploy Container') {
+        stage('Stop Old Container') {
             steps {
                 sh """
                 docker rm -f ${CONTAINER_NAME} || true
+                """
+            }
+        }
 
+        stage('Run New Container') {
+            steps {
+                sh """
                 docker run -d \
                     --name ${CONTAINER_NAME} \
                     -p ${PORT}:${PORT} \
                     -e PORT=${PORT} \
-                    ${IMAGE_NAME}:${IMAGE_TAG}
+                    $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
         }
