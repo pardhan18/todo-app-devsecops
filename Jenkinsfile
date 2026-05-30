@@ -118,7 +118,7 @@ pipeline {
             steps {
                 sh """
                 sleep 10
-                curl -f http://localhost:${PORT}
+                docker exec ${CONTAINER_NAME} curl -f http://localhost:${PORT}
                 """
             }
         }
