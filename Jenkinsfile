@@ -44,10 +44,8 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
+        stage('Quality Gate (Non Blocking)') {
             steps {
-                echo "Waiting for Sonar Quality Gate (NON-BLOCKING)..."
-
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: false
                 }
@@ -76,23 +74,21 @@ pipeline {
             }
         }
 
-        stage('Login & Push to DockerHub') {
+        stage('Docker Login & Push') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_TOKEN'
-                    )
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_TOKEN'
+                )]) {
 
                     sh """
-                    echo $DOCKER_TOKEN | docker login -u $DOCKER_USER --password-stdin
+                    echo \$DOCKER_TOKEN | docker login -u \$DOCKER_USER --password-stdin
 
                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} \
-                    $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    \$DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
 
-                    docker push $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push \$DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
             }
@@ -113,7 +109,7 @@ pipeline {
                     --name ${CONTAINER_NAME} \
                     -p ${PORT}:${PORT} \
                     -e PORT=${PORT} \
-                    $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    ${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
         }
