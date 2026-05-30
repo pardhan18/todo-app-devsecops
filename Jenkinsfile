@@ -17,10 +17,11 @@ pipeline {
             }
         }
 
-        stage('Verify Code') {
+        stage('Install Dependencies') {
             steps {
-                sh 'ls -la'
-                sh 'git log -1'
+                sh """
+                npm install
+                """
             }
         }
 
@@ -45,8 +46,6 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo "Waiting for Sonar Quality Gate..."
-
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
@@ -61,7 +60,7 @@ pipeline {
             }
         }
 
-        stage('Trivy Security Scan') {
+        stage('Trivy Scan') {
             steps {
                 sh """
                 docker run --rm \
@@ -75,15 +74,13 @@ pipeline {
             }
         }
 
-        stage('Login & Push to DockerHub') {
+        stage('Docker Login & Push') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_TOKEN'
-                    )
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_TOKEN'
+                )]) {
 
                     sh """
                     echo $DOCKER_TOKEN | docker login -u $DOCKER_USER --password-stdin
@@ -97,32 +94,17 @@ pipeline {
             }
         }
 
-        stage('Stop Old Container') {
+        stage('Deploy Container') {
             steps {
                 sh """
                 docker rm -f ${CONTAINER_NAME} || true
+
+                docker run -d \
+                    --name ${CONTAINER_NAME} \
+                    -p ${PORT}:${PORT} \
+                    -e PORT=${PORT} \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
                 """
-            }
-        }
-
-        stage('Run New Container') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_TOKEN'
-                    )
-                ]) {
-
-                    sh """
-                    docker run -d \
-                        --name ${CONTAINER_NAME} \
-                        -p ${PORT}:${PORT} \
-                        -e PORT=${PORT} \
-                        $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
-                    """
-                }
             }
         }
 
@@ -130,14 +112,13 @@ pipeline {
             steps {
                 sh """
                 sleep 10
-                docker exec ${CONTAINER_NAME} curl -f http://localhost:${PORT}
+                curl -f http://localhost:${PORT}
                 """
             }
         }
     }
 
     post {
-
         success {
             echo "Pipeline SUCCESS ✅"
 
